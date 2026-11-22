@@ -1,0 +1,458 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    background-color: #faf8f5;
+    color: #1c1917;
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+    font-weight: 700;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    background-image: 
+      radial-gradient(circle at 10% 0%, rgba(255, 112, 67, 0.09) 0%, transparent 45%),
+      radial-gradient(circle at 90% 15%, rgba(255, 183, 77, 0.12) 0%, transparent 50%),
+      radial-gradient(circle at 50% 60%, rgba(244, 63, 94, 0.06) 0%, transparent 60%),
+      radial-gradient(circle at 80% 90%, rgba(251, 146, 60, 0.08) 0%, transparent 45%);
+    background-attachment: fixed;
+  }
+
+  /* Universal High-Impact Bold Hierarchy Everywhere */
+  h1, h2, h3, h4, h5, h6, .font-serif {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-weight: 900 !important;
+    letter-spacing: -0.02em;
+  }
+
+  p, span, a, button, input, label, textarea, select, li, td, th, dt, dd, div {
+    font-weight: 700;
+  }
+
+  /* Override any light, normal or medium utility classes with bold */
+  .font-thin,
+  .font-extralight,
+  .font-light,
+  .font-normal,
+  .font-medium {
+    font-weight: 700 !important;
+  }
+
+  .font-semibold {
+    font-weight: 800 !important;
+  }
+
+  .font-bold,
+  .font-extrabold,
+  .font-black {
+    font-weight: 900 !important;
+  }
+
+  /* Glass Transparent Chrome/Safari Autofill Override */
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover, 
+  input:-webkit-autofill:focus,
+  input:-webkit-autofill:active {
+    -webkit-text-fill-color: #ffffff !important;
+    -webkit-box-shadow: 0 0 0 1000px rgba(35, 20, 15, 0.65) inset !important;
+    caret-color: #ffffff !important;
+    transition: background-color 5000s ease-in-out 0s !important;
+  }
+}
+
+@layer utilities {
+  /* Crisp White Glassmorphism */
+  .glass-white {
+    background: rgba(255, 255, 255, 0.45);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    box-shadow: 0 10px 30px -5px rgba(249, 115, 22, 0.07), 0 0 1px 1px rgba(0, 0, 0, 0.03);
+  }
+
+  /* Ultra-transparent Frosted Glass Navbar with Circular Edges */
+  .glass-nav {
+    background: rgba(255, 255, 255, 0.12);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    box-shadow: 
+      0 8px 32px 0 rgba(0, 0, 0, 0.08),
+      inset 0 1px 1px 0 rgba(255, 255, 255, 0.35);
+  }
+
+  .glass-nav-dark {
+    background: rgba(20, 10, 5, 0.35);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    box-shadow: 
+      0 8px 32px 0 rgba(0, 0, 0, 0.3),
+      inset 0 1px 1px 0 rgba(255, 255, 255, 0.2);
+  }
+
+  /* Luxury Glass Fade Transparent Card */
+  .glass-fade-card {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.65) 0%, rgba(255, 255, 255, 0.35) 45%, rgba(255, 255, 255, 0.14) 100%);
+    backdrop-filter: blur(30px) saturate(190%);
+    -webkit-backdrop-filter: blur(30px) saturate(190%);
+    border: 1px solid rgba(255, 255, 255, 0.55);
+    box-shadow: 
+      0 30px 80px -15px rgba(0, 0, 0, 0.5),
+      inset 0 1px 2px 0 rgba(255, 255, 255, 0.85),
+      inset 0 -1px 2px 0 rgba(255, 255, 255, 0.15);
+  }
+
+  /* Luxury Glass Fade Transparent Footer */
+  .glass-fade-footer {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.60) 0%, rgba(255, 247, 237, 0.28) 45%, rgba(255, 255, 255, 0.08) 100%);
+    backdrop-filter: blur(30px) saturate(190%);
+    -webkit-backdrop-filter: blur(30px) saturate(190%);
+    border-top: 1px solid rgba(255, 255, 255, 0.7);
+    box-shadow: 
+      inset 0 1px 2px 0 rgba(255, 255, 255, 0.9),
+      0 -10px 40px -10px rgba(249, 115, 22, 0.06);
+  }
+
+  /* Luxury Glass Fade Transparent Modal & Checkout */
+  .glass-modal-overlay {
+    background: rgba(18, 12, 8, 0.62);
+    backdrop-filter: blur(28px) saturate(190%);
+    -webkit-backdrop-filter: blur(28px) saturate(190%);
+  }
+
+  .glass-modal-card {
+    background: linear-gradient(155deg, rgba(255, 255, 255, 0.86) 0%, rgba(255, 250, 245, 0.65) 50%, rgba(255, 255, 255, 0.42) 100%);
+    backdrop-filter: blur(40px) saturate(210%);
+    -webkit-backdrop-filter: blur(40px) saturate(210%);
+    border: 1px solid rgba(255, 255, 255, 0.85);
+    box-shadow: 
+      0 40px 90px -20px rgba(0, 0, 0, 0.35),
+      0 0 0 1px rgba(255, 255, 255, 0.55),
+      inset 0 1px 3px 0 rgba(255, 255, 255, 0.95);
+  }
+
+  .glass-modal-header {
+    background: linear-gradient(135deg, rgba(15, 23, 42, 0.92) 0%, rgba(20, 30, 58, 0.88) 50%, rgba(30, 27, 75, 0.88) 100%);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.18);
+  }
+
+  .glass-checkout-card {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.78) 0%, rgba(255, 249, 245, 0.54) 100%);
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.82);
+    box-shadow: 
+      0 12px 35px -8px rgba(249, 115, 22, 0.08),
+      0 2px 6px -1px rgba(0, 0, 0, 0.02),
+      inset 0 1px 1px 0 rgba(255, 255, 255, 0.95);
+  }
+
+  /* Luxury Transparent Kitchen Admin Glass */
+  .glass-admin-nav {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.80) 0%, rgba(255, 250, 245, 0.55) 100%);
+    backdrop-filter: blur(28px) saturate(190%);
+    -webkit-backdrop-filter: blur(28px) saturate(190%);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.85);
+    box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.04), inset 0 1px 1px rgba(255, 255, 255, 0.95);
+  }
+
+  .glass-admin-card {
+    background: linear-gradient(155deg, rgba(255, 255, 255, 0.75) 0%, rgba(255, 250, 245, 0.52) 50%, rgba(255, 255, 255, 0.35) 100%);
+    backdrop-filter: blur(28px) saturate(190%);
+    -webkit-backdrop-filter: blur(28px) saturate(190%);
+    border: 1px solid rgba(255, 255, 255, 0.85);
+    box-shadow: 
+      0 20px 50px -12px rgba(249, 115, 22, 0.08),
+      0 4px 16px -2px rgba(0, 0, 0, 0.03),
+      inset 0 1px 2px 0 rgba(255, 255, 255, 0.95);
+  }
+
+  .glass-admin-subcard {
+    background: rgba(255, 255, 255, 0.52);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.78);
+    box-shadow: inset 0 1px 1px 0 rgba(255, 255, 255, 0.85);
+  }
+
+  .glass-card-white {
+    background: #ffffff;
+    border: 1px solid rgba(244, 114, 182, 0.12);
+    box-shadow: 0 10px 30px -5px rgba(234, 88, 12, 0.08), 0 2px 6px -1px rgba(0, 0, 0, 0.04);
+    transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .glass-card-white:hover {
+    transform: translateY(-5px);
+    border-color: rgba(249, 115, 22, 0.4);
+    box-shadow: 0 20px 40px -8px rgba(249, 115, 22, 0.18), 0 4px 12px -2px rgba(244, 63, 94, 0.1);
+  }
+
+  .sunset-pill {
+    background: rgba(255, 241, 236, 0.8);
+    border: 1px solid rgba(251, 146, 60, 0.25);
+    backdrop-filter: blur(8px);
+  }
+
+  /* Vibrant Sunset Text Gradients */
+  .text-sunset-gradient {
+    background: linear-gradient(135deg, #e11d48 0%, #ea580c 45%, #f59e0b 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .text-sunset-gold {
+    background: linear-gradient(135deg, #ea580c 0%, #f59e0b 60%, #eab308 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  /* Sunset Background Gradients */
+  .bg-sunset-gradient {
+    background: linear-gradient(135deg, #f43f5e 0%, #ea580c 50%, #f59e0b 100%);
+  }
+
+  .bg-sunset-soft {
+    background: linear-gradient(135deg, #fff1ec 0%, #fff7ed 50%, #fef3c7 100%);
+  }
+
+  .sunset-glow {
+    box-shadow: 0 10px 35px -5px rgba(244, 63, 94, 0.35);
+  }
+}
+
+/* Animations */
+@keyframes ambient3D {
+  0% {
+    transform: perspective(1200px) rotateX(0deg) rotateY(0deg) scale(1.08);
+  }
+  25% {
+    transform: perspective(1200px) rotateX(2.5deg) rotateY(-3deg) scale(1.11);
+  }
+  50% {
+    transform: perspective(1200px) rotateX(-2.5deg) rotateY(2.5deg) scale(1.09);
+  }
+  75% {
+    transform: perspective(1200px) rotateX(2deg) rotateY(2deg) scale(1.12);
+  }
+  100% {
+    transform: perspective(1200px) rotateX(0deg) rotateY(0deg) scale(1.08);
+  }
+}
+
+@keyframes floatEmber {
+  0% {
+    transform: translateY(100vh) translateX(0) scale(0.6) rotate(0deg);
+    opacity: 0;
+  }
+  20% {
+    opacity: 0.9;
+  }
+  80% {
+    opacity: 0.8;
+  }
+  100% {
+    transform: translateY(-20vh) translateX(50px) scale(1.4) rotate(360deg);
+    opacity: 0;
+  }
+}
+
+.animate-3d-ambient {
+  animation: ambient3D 22s ease-in-out infinite;
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+
+@keyframes slideProgress {
+  from {
+    width: 0%;
+  }
+  to {
+    width: 100%;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.6s ease-out forwards;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulseWarm {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.9;
+  }
+  50% {
+    transform: scale(1.04);
+    opacity: 1;
+  }
+}
+
+.animate-slide-up {
+  animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-pulse-warm {
+  animation: pulseWarm 3s ease-in-out infinite;
+}
+
+/* ── Pizza Slice Removal & Cheese Pull Keyframes ── */
+@keyframes steamDrift {
+  0% {
+    opacity: 0;
+    transform: translateY(2px) scale(0.9);
+  }
+  30% {
+    opacity: 0.75;
+  }
+  70% {
+    opacity: 0.45;
+    transform: translateY(-16px) translateX(3px) scale(1.15);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-30px) translateX(6px) scale(1.3);
+  }
+}
+
+@keyframes cheeseGooWobble {
+  0%, 100% {
+    transform: scale(1) rotate(0deg);
+  }
+  50% {
+    transform: scale(1.02, 0.96) rotate(0.4deg);
+  }
+}
+
+@keyframes sliceFloatPulse {
+  0%, 100% {
+    transform: translate(28px, -28px) scale(1.03) rotate(1deg);
+  }
+  50% {
+    transform: translate(31px, -31px) scale(1.05) rotate(1.8deg);
+  }
+}
+
+.animate-steam-1 {
+  animation: steamDrift 2.8s ease-out infinite;
+}
+
+.animate-steam-2 {
+  animation: steamDrift 3.4s ease-out 0.9s infinite;
+}
+
+.animate-steam-3 {
+  animation: steamDrift 2.4s ease-out 1.5s infinite;
+}
+
+.animate-cheese-goo {
+  animation: cheeseGooWobble 2.5s ease-in-out infinite;
+  transform-origin: center;
+}
+
+.animate-slice-float {
+  animation: sliceFloatPulse 3s ease-in-out infinite;
+}
+
+/* ── Catalog Stagger Entrance & Counter Animations ── */
+@keyframes cardFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(22px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-card-fade-in {
+  animation: cardFadeIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes numberPop {
+  0% {
+    transform: scale(0.7);
+    opacity: 0.4;
+  }
+  50% {
+    transform: scale(1.22);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.animate-number-pop {
+  animation: numberPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+@keyframes spinSlow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin-slow {
+  animation: spinSlow 12s linear infinite;
+}
+
+@keyframes modalZoom {
+  from {
+    opacity: 0;
+    transform: scale(0.94) translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.animate-modal-zoom {
+  animation: modalZoom 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Sleek Sunset Scrollbar */
+::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+::-webkit-scrollbar-track {
+  background: #faf8f5;
+}
+::-webkit-scrollbar-thumb {
+  background: #fdba74;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #ea580c;
+}
