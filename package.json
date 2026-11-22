@@ -1,0 +1,14 @@
+{
+  "name": "pizzeria-bella-platform",
+  "version": "1.0.0",
+  "description": "Pizzeria Bella - Artisanal Neapolitan Hearth Pizza & Intelligent Delivery Platform",
+  "private": true,
+  "scripts": {
+    "build": "cd backend && npm install && cd ../frontend && npm install && npm run build",
+    "start": "node backend/src/server.js",
+    "seed": "node backend/src/seed.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

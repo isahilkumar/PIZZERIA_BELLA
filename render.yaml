@@ -1,19 +1,19 @@
 # ==============================================================================
-# 🍕 Pizzeria Bella - Render Blueprint Specification
+# 🍕 Pizzeria Bella - Render Blueprint Specification (Single Fullstack Service)
 # Docs: https://render.com/docs/blueprint-spec
 # ==============================================================================
 
 services:
   # ----------------------------------------------------------------------------
-  # 1. Backend Web Service (Node.js + Express + Socket.IO + MongoDB Mongoose)
+  # Single Unified Fullstack Web Service (Frontend SPA + Backend API + WebSockets)
+  # Uses exactly 1 service slot to fit within Render's 25 service account limit
   # ----------------------------------------------------------------------------
   - type: web
-    name: pizzeria-bella-backend
+    name: pizzeria-bella
     runtime: node
     plan: free
-    rootDir: backend
-    buildCommand: npm install
-    startCommand: npm start
+    buildCommand: cd backend && npm install && cd ../frontend && npm install && npm run build
+    startCommand: node backend/src/server.js
     healthCheckPath: /api/health
     envVars:
       - key: NODE_ENV
@@ -46,29 +46,3 @@ services:
         sync: false
       - key: RAZORPAY_KEY_SECRET
         sync: false
-      - key: CLIENT_URL
-        fromService:
-          type: web
-          name: pizzeria-bella-frontend
-          property: host
-
-  # ----------------------------------------------------------------------------
-  # 2. Frontend Static Site (React 18 + Vite Single Page Application)
-  # ----------------------------------------------------------------------------
-  - type: web
-    name: pizzeria-bella-frontend
-    runtime: static
-    plan: free
-    rootDir: frontend
-    buildCommand: npm install && npm run build
-    staticPublishPath: ./dist
-    routes:
-      - type: rewrite
-        source: /*
-        destination: /index.html
-    envVars:
-      - key: VITE_API_URL
-        fromService:
-          type: web
-          name: pizzeria-bella-backend
-          property: host
