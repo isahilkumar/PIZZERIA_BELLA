@@ -1,0 +1,74 @@
+# ==============================================================================
+# 🍕 Pizzeria Bella - Render Blueprint Specification
+# Docs: https://render.com/docs/blueprint-spec
+# ==============================================================================
+
+services:
+  # ----------------------------------------------------------------------------
+  # 1. Backend Web Service (Node.js + Express + Socket.IO + MongoDB Mongoose)
+  # ----------------------------------------------------------------------------
+  - type: web
+    name: pizzeria-bella-backend
+    runtime: node
+    plan: free
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MONGO_URI
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 7d
+      - key: ADMIN_EMAIL
+        value: kumarsahil4447@gmail.com
+      - key: DEFAULT_STOCK_THRESHOLD
+        value: "20"
+      - key: CRON_SCHEDULE
+        value: "*/30 * * * *"
+      - key: EMAIL_SERVICE
+        value: gmail
+      - key: SMTP_HOST
+        value: smtp.gmail.com
+      - key: SMTP_PORT
+        value: "465"
+      - key: SMTP_USER
+        value: kumarsahil4447@gmail.com
+      - key: SMTP_PASS
+        sync: false
+      - key: SMTP_FROM
+        value: Pizzeria Bella <kumarsahil4447@gmail.com>
+      - key: RAZORPAY_KEY_ID
+        sync: false
+      - key: RAZORPAY_KEY_SECRET
+        sync: false
+      - key: CLIENT_URL
+        fromService:
+          type: web
+          name: pizzeria-bella-frontend
+          property: host
+
+  # ----------------------------------------------------------------------------
+  # 2. Frontend Static Site (React 18 + Vite Single Page Application)
+  # ----------------------------------------------------------------------------
+  - type: web
+    name: pizzeria-bella-frontend
+    runtime: static
+    plan: free
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: ./dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_URL
+        fromService:
+          type: web
+          name: pizzeria-bella-backend
+          property: host

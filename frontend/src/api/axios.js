@@ -1,7 +1,14 @@
 import axios from 'axios';
 
+const rawUrl = import.meta.env.VITE_API_URL;
+const resolvedBaseUrl = rawUrl
+  ? rawUrl.startsWith('http')
+    ? `${rawUrl.replace(/\/+$/, '')}/api`
+    : `https://${rawUrl.replace(/\/+$/, '')}/api`
+  : '/api';
+
 const API = axios.create({
-  baseURL: import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api` : '/api',
+  baseURL: resolvedBaseUrl,
 });
 
 // Add Authorization header with JWT token if available
