@@ -4,6 +4,7 @@ const path = require('path');
 const fs = require('fs');
 const express = require('express');
 const cors = require('cors');
+const mongoose = require('mongoose');
 const { Server } = require('socket.io');
 
 const connectDB = require('./config/db');
@@ -66,21 +67,35 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Health check endpoint (always accessible for Render liveness probes)
+app.get('/api/health', (req, res) => {
+  const isConnected = mongoose.connection.readyState === 1;
+  res.status(200).json({
+    status: isConnected ? 'ok' : 'degraded',
+    service: 'Pizzeria Bella API',
+    database: isConnected ? 'connected' : 'connecting_or_disconnected',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+  });
+});
+
+// Database guard middleware for all other /api endpoints
+app.use('/api', (req, res, next) => {
+  if (mongoose.connection.readyState !== 1) {
+    return res.status(503).json({
+      success: false,
+      message: 'Database is connecting. Please ensure a valid MONGO_URI is set in your Render dashboard Environment tab.',
+      dbState: mongoose.connection.readyState,
+    });
+  }
+  next();
+});
+
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/inventory', inventoryRoutes);
 app.use('/api/pizzas', pizzaRoutes);
 app.use('/api/orders', orderRoutes);
-
-// Health check
-app.get('/api/health', (req, res) => {
-  res.status(200).json({
-    status: 'ok',
-    timestamp: new Date().toISOString(),
-    service: 'Pizzeria Bella API',
-    uptime: process.uptime(),
-  });
-});
 
 // Serve Frontend in Production if built
 const frontendDist = path.join(__dirname, '../../frontend/dist');
@@ -105,25 +120,24 @@ app.use((err, req, res, next) => {
 
 const PORT = process.env.PORT || 5000;
 
-// Start server after connecting to MongoDB
-const startServer = async () => {
-  try {
-    await connectDB();
+// Start server immediately so Render detects port binding and does NOT crash loop
+const startServer = () => {
+  server.listen(PORT, () => {
+    console.log(`===============================================`);
+    console.log(`🚀 Pizza Delivery Server running on port ${PORT}`);
+    console.log(`📡 Socket.IO Real-time Engine initialized`);
+    console.log(`🍕 Client URL: ${process.env.CLIENT_URL || 'http://localhost:5173'}`);
+    console.log(`===============================================`);
+  });
 
-    // Initialize scheduled node-cron stock monitoring job
-    initStockCron();
-
-    server.listen(PORT, () => {
-      console.log(`===============================================`);
-      console.log(`🚀 Pizza Delivery Server running on port ${PORT}`);
-      console.log(`📡 Socket.IO Real-time Engine initialized`);
-      console.log(`🍕 Client URL: ${process.env.CLIENT_URL || 'http://localhost:5173'}`);
-      console.log(`===============================================`);
-    });
-  } catch (error) {
-    console.error('Fatal startup error:', error.message);
-    process.exit(1);
-  }
+  // Connect to MongoDB asynchronously
+  connectDB().then((conn) => {
+    if (conn) {
+      initStockCron();
+    }
+  }).catch((err) => {
+    console.error('Initial DB connection attempt error:', err.message);
+  });
 };
 
 startServer();
