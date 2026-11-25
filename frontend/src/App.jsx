@@ -2,6 +2,7 @@ import React from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
+import FloatingCartBar from './components/FloatingCartBar';
 
 // User Pages
 import Home from './pages/Home';
@@ -56,6 +57,7 @@ export default function App() {
           <Route path="/" element={<Home />} />
           <Route path="/welcome" element={<Welcome />} />
           <Route path="/custom-builder" element={<CustomBuilder />} />
+          <Route path="/cart" element={<CartSummary />} />
           <Route path="/checkout" element={<CartSummary />} />
           <Route path="/orders" element={<MyOrders />} />
           <Route path="/orders/:id" element={<OrderDetails />} />
@@ -81,6 +83,8 @@ export default function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
+
+      <FloatingCartBar />
 
       {!hideFooter && <Footer />}
     </div>

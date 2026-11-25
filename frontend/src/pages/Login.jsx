@@ -490,7 +490,7 @@ export default function Login() {
               <p className="text-xs text-stone-600 font-medium">
                 Don't have an account?{' '}
                 <Link to="/register" className="text-orange-600 hover:text-orange-700 font-black hover:underline">
-                  Create Account Here →
+                  Register with Mobile Number & OTP →
                 </Link>
               </p>
 

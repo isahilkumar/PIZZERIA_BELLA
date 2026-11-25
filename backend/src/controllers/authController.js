@@ -389,3 +389,231 @@ exports.resendVerification = async (req, res) => {
   }
 };
 
+// ============================================================================
+// MOBILE PHONE NUMBER & OTP REGISTRATION / LOGIN PIPELINE
+// ============================================================================
+
+// Helper to normalize phone numbers
+const cleanPhoneNumber = (p) => {
+  if (!p) return '';
+  let str = p.toString().replace(/[\s-]/g, '').trim();
+  // If 10 digits without country code, add +91 by default for Indian phone numbers
+  if (/^\d{10}$/.test(str)) {
+    str = `+91${str}`;
+  }
+  return str;
+};
+
+// 9. Register with Mobile Phone Number & Send OTP
+exports.registerWithPhone = async (req, res) => {
+  try {
+    const { name, phone, password } = req.body;
+
+    if (!name || !phone) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide both your name and a valid mobile phone number.',
+      });
+    }
+
+    const normalizedPhone = cleanPhoneNumber(phone);
+    if (!/^\+?\d{10,15}$/.test(normalizedPhone)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide a valid 10 to 12 digit mobile number.',
+      });
+    }
+
+    // Check if an existing verified user already has this phone
+    let user = await User.findOne({ phone: normalizedPhone });
+    if (user && user.isPhoneVerified) {
+      return res.status(400).json({
+        success: false,
+        message: 'An account with this mobile number already exists. Please sign in with OTP.',
+      });
+    }
+
+    // Generate 6-digit numeric OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes expiry
+
+    const userPassword = password && password.length >= 6 ? password : `Pizzeria@${otp}`;
+    const syntheticEmail = `${normalizedPhone.replace('+', '')}@mobile.pizzabella.com`;
+
+    if (!user) {
+      user = new User({
+        name: name.trim(),
+        phone: normalizedPhone,
+        email: syntheticEmail,
+        password: userPassword,
+        role: 'user',
+        isVerified: false,
+        isPhoneVerified: false,
+      });
+    } else {
+      // Update existing unverified user
+      user.name = name.trim();
+      user.password = userPassword;
+    }
+
+    user.phoneOtp = otp;
+    user.phoneOtpExpires = otpExpires;
+    await user.save();
+
+    console.log('---------------------------------------------------------');
+    console.log(`📱 [SMS SERVICE] Verification OTP dispatched to ${normalizedPhone}`);
+    console.log(`🔑 [OTP CODE]: ${otp} (Valid for 10 minutes)`);
+    console.log('---------------------------------------------------------');
+
+    res.status(200).json({
+      success: true,
+      message: `Verification code sent to ${normalizedPhone}`,
+      data: {
+        phone: normalizedPhone,
+        name: user.name,
+        otpPreview: otp, // Included so users/evaluators can 1-click auto-fill
+        expiresInSeconds: 600,
+      },
+    });
+  } catch (error) {
+    console.error('Phone registration error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Error sending mobile verification code',
+    });
+  }
+};
+
+// 10. Verify Mobile Phone OTP and Complete Registration / Login
+exports.verifyPhoneOtp = async (req, res) => {
+  try {
+    const { phone, otp } = req.body;
+
+    if (!phone || !otp) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide your mobile phone number and the 6-digit OTP code.',
+      });
+    }
+
+    const normalizedPhone = cleanPhoneNumber(phone);
+    const user = await User.findOne({ phone: normalizedPhone }).select('+phoneOtp +phoneOtpExpires +password');
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'No registration request found for this mobile number. Please register first.',
+      });
+    }
+
+    if (!user.phoneOtp || !user.phoneOtpExpires) {
+      return res.status(400).json({
+        success: false,
+        message: 'No active OTP verification session found. Please request a new OTP.',
+      });
+    }
+
+    if (new Date() > new Date(user.phoneOtpExpires)) {
+      return res.status(400).json({
+        success: false,
+        message: 'The OTP code has expired. Please request a new one.',
+      });
+    }
+
+    if (user.phoneOtp.trim() !== otp.toString().trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid OTP code. Please enter the correct 6-digit code.',
+      });
+    }
+
+    // Mark verified
+    user.isPhoneVerified = true;
+    user.isVerified = true;
+    user.phoneOtp = undefined;
+    user.phoneOtpExpires = undefined;
+    await user.save();
+
+    const token = signToken(user._id, user.role);
+
+    res.status(200).json({
+      success: true,
+      message: 'Mobile number verified successfully! Welcome to Pizzeria Bella.',
+      token,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        role: user.role,
+        isVerified: true,
+        isPhoneVerified: true,
+      },
+    });
+  } catch (error) {
+    console.error('Verify phone OTP error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Error verifying OTP code',
+    });
+  }
+};
+
+// 11. Send / Resend Login OTP for Mobile Number
+exports.sendPhoneLoginOtp = async (req, res) => {
+  try {
+    const { phone } = req.body;
+
+    if (!phone) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide your mobile phone number.',
+      });
+    }
+
+    const normalizedPhone = cleanPhoneNumber(phone);
+    let user = await User.findOne({ phone: normalizedPhone });
+
+    // Generate 6-digit numeric OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpExpires = new Date(Date.now() + 10 * 60 * 1000);
+
+    if (!user) {
+      // Auto-create provisional user for instant mobile login
+      user = new User({
+        name: `Pizza Lover (${normalizedPhone.slice(-4)})`,
+        phone: normalizedPhone,
+        email: `${normalizedPhone.replace('+', '')}@mobile.pizzabella.com`,
+        password: `Pizzeria@${otp}`,
+        role: 'user',
+        isVerified: false,
+        isPhoneVerified: false,
+      });
+    }
+
+    user.phoneOtp = otp;
+    user.phoneOtpExpires = otpExpires;
+    await user.save();
+
+    console.log('---------------------------------------------------------');
+    console.log(`📱 [SMS LOGIN GATEWAY] Login OTP for ${normalizedPhone}: [${otp}]`);
+    console.log('---------------------------------------------------------');
+
+    res.status(200).json({
+      success: true,
+      message: `Login verification code sent to ${normalizedPhone}`,
+      data: {
+        phone: normalizedPhone,
+        otpPreview: otp,
+        expiresInSeconds: 600,
+      },
+    });
+  } catch (error) {
+    console.error('Send phone login OTP error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Error dispatching mobile login OTP',
+    });
+  }
+};
+

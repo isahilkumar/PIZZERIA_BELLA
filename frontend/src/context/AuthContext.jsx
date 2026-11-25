@@ -98,6 +98,27 @@ export const AuthProvider = ({ children }) => {
     return res.data;
   };
 
+  const registerWithPhone = async (name, phone, password) => {
+    const res = await API.post('/auth/register-phone', { name, phone, password });
+    return res.data;
+  };
+
+  const verifyPhoneOtp = async (phone, otp) => {
+    const res = await API.post('/auth/verify-phone-otp', { phone, otp });
+    if (res.data.success && res.data.token) {
+      setToken(res.data.token);
+      setUser(res.data.user);
+      localStorage.setItem('token', res.data.token);
+      localStorage.setItem('user', JSON.stringify(res.data.user));
+    }
+    return res.data;
+  };
+
+  const sendPhoneOtp = async (phone) => {
+    const res = await API.post('/auth/send-phone-otp', { phone });
+    return res.data;
+  };
+
   const logout = () => {
     setToken(null);
     setUser(null);
@@ -116,6 +137,9 @@ export const AuthProvider = ({ children }) => {
         login,
         adminLogin,
         register,
+        registerWithPhone,
+        verifyPhoneOtp,
+        sendPhoneOtp,
         verifyEmail,
         resendVerification,
         forgotPassword,

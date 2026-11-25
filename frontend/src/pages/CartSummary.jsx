@@ -250,13 +250,22 @@ export default function CartSummary() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
       {/* Header */}
-      <div className="border-b border-orange-200 pb-4">
-        <span className="text-xs uppercase font-mono font-bold tracking-widest text-sunset-600">
-          Artisanal Checkout
-        </span>
-        <h1 className="text-3xl sm:text-4xl font-serif font-bold text-orange-900 mt-1">
-          Review Order & Confirm Payment
-        </h1>
+      <div className="border-b border-orange-200 pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <span className="text-xs uppercase font-mono font-bold tracking-widest text-sunset-600 flex items-center gap-1.5">
+            <ShoppingBag className="w-4 h-4 text-sunset-500" />
+            Artisanal Dining • View Cart
+          </span>
+          <h1 className="text-3xl sm:text-4xl font-serif font-black text-orange-950 mt-1">
+            Your Cart & Order Review
+          </h1>
+        </div>
+        <Link
+          to="/"
+          className="self-start sm:self-auto px-5 py-2.5 rounded-full border border-orange-200 bg-white hover:bg-orange-50 text-xs font-bold text-orange-800 transition shadow-2xs"
+        >
+          ← Add More Pizzas
+        </Link>
       </div>
 
       {errorMessage && (

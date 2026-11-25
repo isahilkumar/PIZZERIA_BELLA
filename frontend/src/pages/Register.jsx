@@ -1,14 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { PizzaLogoIcon } from '../components/BrandLogo';
+import confetti from 'canvas-confetti';
 import {
   Pizza,
   Lock,
   Mail,
   User,
+  Smartphone,
+  KeyRound,
   AlertCircle,
   CheckCircle,
+  CheckCircle2,
   ArrowRight,
   ExternalLink,
   Eye,
@@ -19,6 +23,9 @@ import {
   Sparkles,
   Clock,
   Award,
+  RefreshCw,
+  Edit2,
+  PhoneCall,
 } from 'lucide-react';
 
 // Curated 4K/HD pizza slides for full-screen 3D backdrop
@@ -54,24 +61,51 @@ const REGISTER_SLIDES = [
 ];
 
 export default function Register() {
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const redirect = searchParams.get('redirect') || '/';
+
+  // Auth Mode: 'phone' (Mobile OTP) vs 'email' (Email & Password)
+  const [authMode, setAuthMode] = useState('phone');
+
+  // Common Fields
   const [name, setName] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  // Email Registration Fields
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
   const [registrationSuccess, setRegistrationSuccess] = useState(null);
+
+  // Mobile Phone + OTP Registration Fields
+  const [phone, setPhone] = useState('');
+  const [phonePassword, setPhonePassword] = useState('');
+  const [showPhonePassword, setShowPhonePassword] = useState(false);
+  const [otpSent, setOtpSent] = useState(false);
+  const [otp, setOtp] = useState('');
+  const [otpPreview, setOtpPreview] = useState('');
+  const [countdown, setCountdown] = useState(0);
+  const [phoneSuccessUser, setPhoneSuccessUser] = useState(null);
 
   // 3D Parallax & Depth State
   const [tilt, setTilt] = useState({ x: 0, y: 0, mouseX: 50, mouseY: 50 });
   const [isHovering, setIsHovering] = useState(false);
-
-  // Full-Screen Pizza Slide Index
   const [slideIndex, setSlideIndex] = useState(0);
 
-  const { register } = useAuth();
+  const { register, registerWithPhone, verifyPhoneOtp } = useAuth();
+
+  // Countdown timer for Resend OTP
+  useEffect(() => {
+    let timer;
+    if (countdown > 0) {
+      timer = setTimeout(() => setCountdown(countdown - 1), 1000);
+    }
+    return () => clearTimeout(timer);
+  }, [countdown]);
 
   // Mouse Parallax Tilt Tracker
   const handleMouseMove = (e) => {
@@ -103,7 +137,8 @@ export default function Register() {
     return () => clearInterval(timer);
   }, []);
 
-  const handleSubmit = async (e) => {
+  // 1. Submit Email Registration
+  const handleEmailSubmit = async (e) => {
     e.preventDefault();
     setError('');
 
@@ -128,6 +163,81 @@ export default function Register() {
       }
     } catch (err) {
       setError(err.response?.data?.message || 'Registration failed. Email may already be in use.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 2. Submit Phone Number to Request OTP
+  const handleSendPhoneOtp = async (e) => {
+    e?.preventDefault();
+    setError('');
+
+    if (!name.trim()) {
+      setError('Please enter your full name');
+      return;
+    }
+
+    const cleanPhone = phone.replace(/[\s-]/g, '');
+    if (!cleanPhone || cleanPhone.length < 10) {
+      setError('Please enter a valid 10-digit mobile phone number');
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const res = await registerWithPhone(name, cleanPhone, phonePassword);
+      if (res.success) {
+        setOtpSent(true);
+        setOtpPreview(res.data?.otpPreview || '');
+        setCountdown(60);
+      } else {
+        setError(res.message || 'Failed to dispatch verification code');
+      }
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to dispatch OTP. Please verify your phone number.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 3. Verify OTP and Complete Phone Registration
+  const handleVerifyPhoneOtp = async (e) => {
+    e?.preventDefault();
+    setError('');
+
+    if (!otp || otp.length < 6) {
+      setError('Please enter the complete 6-digit OTP code');
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const cleanPhone = phone.replace(/[\s-]/g, '');
+      const res = await verifyPhoneOtp(cleanPhone, otp);
+
+      if (res.success) {
+        setPhoneSuccessUser(res.user);
+
+        // Fire celebratory confetti!
+        try {
+          confetti({
+            particleCount: 120,
+            spread: 70,
+            origin: { y: 0.6 },
+          });
+        } catch {}
+
+        setTimeout(() => {
+          navigate(redirect);
+        }, 1800);
+      } else {
+        setError(res.message || 'OTP verification failed');
+      }
+    } catch (err) {
+      setError(err.response?.data?.message || 'Invalid or expired OTP code. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -158,147 +268,107 @@ export default function Register() {
           willChange: 'transform',
         }}
       >
-        {REGISTER_SLIDES.map((slide, idx) => {
-          const isActive = idx === slideIndex;
-          return (
-            <div
-              key={idx}
-              className="absolute inset-0 w-full h-full"
-              style={{
-                opacity: isActive ? 1 : 0,
-                zIndex: isActive ? 2 : 1,
-                transition: 'opacity 1800ms cubic-bezier(0.4, 0, 0.2, 1)',
-              }}
-            >
-              <img
-                src={slide.img}
-                alt={slide.title}
-                className="w-full h-full object-cover object-center scale-[1.06]"
-                loading={idx === 0 ? 'eager' : 'lazy'}
-                decoding="async"
-              />
-            </div>
-          );
-        })}
-      </div>
-
-      {/* ── Dynamic 3D Sunset Glow Spotlight ── */}
-      <div
-        className="absolute inset-0 pointer-events-none z-10 transition-opacity duration-700"
-        style={{
-          background: isHovering
-            ? `radial-gradient(circle 650px at ${tilt.mouseX}% ${tilt.mouseY}%, rgba(249, 115, 22, 0.24) 0%, rgba(244, 63, 94, 0.12) 35%, transparent 75%)`
-            : 'radial-gradient(circle 700px at 70% 40%, rgba(249, 115, 22, 0.18) 0%, transparent 70%)',
-          mixBlendMode: 'screen',
-        }}
-      />
-
-      {/* ── Floating 3D Stone Oven Embers ── */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none z-15">
-        {[
-          { left: '10%', delay: '0s', dur: '12s', size: 'w-2 h-2', bg: 'bg-amber-400' },
-          { left: '30%', delay: '3s', dur: '15s', size: 'w-1.5 h-1.5', bg: 'bg-orange-400' },
-          { left: '52%', delay: '1.5s', dur: '14s', size: 'w-2.5 h-2.5', bg: 'bg-rose-400' },
-          { left: '70%', delay: '5s', dur: '13s', size: 'w-1 h-1', bg: 'bg-amber-300' },
-          { left: '88%', delay: '2s', dur: '16s', size: 'w-2 h-2', bg: 'bg-orange-500' },
-          { left: '42%', delay: '7s', dur: '18s', size: 'w-1.5 h-1.5', bg: 'bg-amber-400' },
-        ].map((ember, i) => (
+        {REGISTER_SLIDES.map((slide, idx) => (
           <div
-            key={i}
-            className={`absolute rounded-full ${ember.size} ${ember.bg} blur-[0.7px] shadow-[0_0_8px_rgba(251,146,60,0.8)]`}
-            style={{
-              left: ember.left,
-              bottom: '-20px',
-              animation: `floatEmber ${ember.dur} infinite linear`,
-              animationDelay: ember.delay,
-            }}
-          />
+            key={idx}
+            className={`absolute inset-0 w-full h-full transition-opacity duration-1000 ease-in-out ${
+              idx === slideIndex ? 'opacity-100 scale-100' : 'opacity-0 scale-105 pointer-events-none'
+            }`}
+          >
+            <img
+              src={slide.img}
+              alt={slide.title}
+              className="w-full h-full object-cover object-center transform transition-transform duration-10000 ease-linear scale-105"
+            />
+            {/* Cinematic Multilayer Vignettes */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/45 to-black/70" />
+            <div className="absolute inset-0 bg-radial-gradient from-transparent via-black/35 to-black/80" />
+            <div className="absolute inset-0 bg-gradient-to-r from-black/75 via-transparent to-black/75" />
+          </div>
         ))}
       </div>
 
-      {/* ── Multi-Layer Cinematic Vignettes for Readability ── */}
-      <div className="absolute inset-0 bg-gradient-to-r from-stone-950/92 via-stone-950/75 to-stone-950/85 z-10 pointer-events-none" />
-      <div className="absolute inset-x-0 bottom-0 h-48 bg-gradient-to-t from-stone-950/90 to-transparent z-10 pointer-events-none" />
-      <div className="absolute inset-x-0 top-0 h-36 bg-gradient-to-b from-stone-950/70 to-transparent z-10 pointer-events-none" />
+      {/* Floating 3D Depth Particles */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        <div
+          className="absolute top-1/4 left-1/6 w-72 h-72 rounded-full bg-orange-500/20 blur-3xl"
+          style={{
+            transform: `translate3d(${tilt.y * 3}px, ${tilt.x * 3}px, 50px)`,
+            transition: 'transform 0.3s ease-out',
+          }}
+        />
+        <div
+          className="absolute bottom-1/4 right-1/6 w-80 h-80 rounded-full bg-rose-500/20 blur-3xl"
+          style={{
+            transform: `translate3d(${tilt.y * -2.5}px, ${tilt.x * -2.5}px, 30px)`,
+            transition: 'transform 0.3s ease-out',
+          }}
+        />
+      </div>
 
       {/* ═══════════════════════════════════════════════════
-          FOREGROUND CONTENT: 3D Showcase + Glass Register Card
+          MAIN TWO-COLUMN STAGE (Hero Story + Form)
       ═══════════════════════════════════════════════════ */}
-      <div className="max-w-7xl mx-auto w-full grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-14 items-center relative z-20">
+      <div className="relative z-10 max-w-7xl w-full mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
         
-        {/* ── LEFT PANEL (Desktop): Member Club Perks & 3D Showcase ── */}
-        <div className="lg:col-span-6 xl:col-span-7 space-y-6 hidden lg:block text-white">
-          {/* Eyebrow Pill */}
-          <div className="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full bg-white/10 border border-white/20 backdrop-blur-md shadow-sm">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-            <span className="text-[11px] font-mono font-bold tracking-wider uppercase text-amber-200">
-              Join Bella Club • VIP Membership
-            </span>
-          </div>
-
-          {/* Active Pizza Title & Perk */}
-          <div className="space-y-3">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-orange-600/90 text-white backdrop-blur-md border border-orange-400/40 shadow-sm">
-              <Flame className="w-3.5 h-3.5 text-amber-300" />
+        {/* ── LEFT PANEL: Live Artisanal Slide Showcase ── */}
+        <div className="hidden lg:flex lg:col-span-6 xl:col-span-7 flex-col justify-between space-y-8 pr-4">
+          <div className="space-y-4">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white text-xs font-bold tracking-wider uppercase shadow-lg">
+              <Sparkles className="w-4 h-4 text-amber-300 animate-pulse" />
               <span>{activeSlide.tag}</span>
             </div>
-            
-            <h1 className="text-4xl sm:text-5xl xl:text-6xl font-serif font-black text-white leading-tight drop-shadow-2xl">
+
+            <h1 className="text-4xl xl:text-5xl 2xl:text-6xl font-serif font-black text-white leading-tight tracking-tight drop-shadow-md">
               {activeSlide.title}
             </h1>
 
-            <div className="text-amber-300 text-sm font-mono font-bold flex items-center gap-2 drop-shadow">
-              <Sparkles className="w-4 h-4 text-amber-400 animate-pulse" />
-              <span>Member Perk: {activeSlide.perk}</span>
+            <p className="text-base text-white/85 font-medium leading-relaxed max-w-xl drop-shadow">
+              {activeSlide.highlight}
+            </p>
+          </div>
+
+          {/* Quick Perks Badge */}
+          <div className="flex items-center gap-3">
+            <div className="px-4 py-2.5 rounded-2xl bg-black/40 backdrop-blur-md border border-white/15 flex items-center gap-2.5 text-white shadow-lg">
+              <Award className="w-5 h-5 text-amber-400" />
+              <div className="text-left">
+                <div className="text-[10px] text-white/60 font-mono uppercase tracking-wider">Perk Included</div>
+                <div className="text-xs font-bold text-amber-300">{activeSlide.perk}</div>
+              </div>
+            </div>
+            <div className="px-4 py-2.5 rounded-2xl bg-black/40 backdrop-blur-md border border-white/15 flex items-center gap-2 text-white/90 text-xs font-bold">
+              <ShieldCheck className="w-4 h-4 text-emerald-400" />
+              <span>Instant OTP & Secure Login</span>
             </div>
           </div>
 
-          {/* Sensory Highlight Quote */}
-          <p className="text-white/80 text-sm leading-relaxed font-medium max-w-xl">
-            "{activeSlide.highlight}"
-          </p>
+          {/* Bottom Interactive Slide Strip */}
+          <div className="space-y-2 pt-4">
+            <div className="text-[11px] font-mono uppercase tracking-widest text-white/70 font-bold flex items-center gap-2">
+              <Clock className="w-3.5 h-3.5 text-orange-400" />
+              <span>Artisanal Wood-Fired Menu Showcase ({slideIndex + 1}/{REGISTER_SLIDES.length})</span>
+            </div>
 
-          {/* Trust strip */}
-          <div className="flex items-center gap-6 pt-2 border-t border-white/15 text-xs text-white/75 font-medium">
-            <span className="flex items-center gap-1.5 text-amber-300 font-bold">
-              <Star className="w-4 h-4 fill-current" />
-              4.9/5 Customer Rating
-            </span>
-            <span className="flex items-center gap-1.5">
-              <Clock className="w-4 h-4 text-orange-400" />
-              35-min Guarantee
-            </span>
-            <span className="flex items-center gap-1.5">
-              <Award className="w-4 h-4 text-amber-400" />
-              Stone-Baked at 800°F
-            </span>
-          </div>
-
-          {/* Interactive Slide Thumbnail Switcher */}
-          <div className="space-y-2 pt-2">
-            <span className="text-[10px] uppercase font-mono tracking-widest text-amber-200/80 block font-bold">
-              Explore Wood-Oven Creations:
-            </span>
-            <div className="flex items-center gap-3">
+            <div className="grid grid-cols-4 gap-2.5">
               {REGISTER_SLIDES.map((slide, idx) => (
                 <button
                   key={idx}
                   onClick={() => setSlideIndex(idx)}
-                  className={`group relative rounded-2xl overflow-hidden border transition-all duration-300 p-1 flex items-center gap-2.5 ${
+                  className={`text-left p-2.5 rounded-xl border transition-all duration-300 cursor-pointer ${
                     idx === slideIndex
-                      ? 'bg-white/20 border-amber-300 shadow-sunset-sm scale-105'
-                      : 'bg-black/30 border-white/15 hover:border-white/40 opacity-75 hover:opacity-100'
+                      ? 'bg-white/25 border-orange-400 shadow-lg scale-102'
+                      : 'bg-black/40 border-white/10 hover:bg-white/15 opacity-70 hover:opacity-100'
                   }`}
                 >
-                  <img
-                    src={slide.img}
-                    alt={slide.title}
-                    className="w-10 h-10 rounded-xl object-cover"
-                  />
-                  <div className="text-left pr-2 hidden xl:block">
-                    <div className="text-[11px] font-bold text-white leading-snug line-clamp-1">{slide.title}</div>
-                    <div className="text-[9px] text-amber-300 font-mono font-bold line-clamp-1">{slide.perk}</div>
+                  <div className="relative h-12 rounded-lg overflow-hidden mb-1.5">
+                    <img src={slide.img} alt={slide.title} className="w-full h-full object-cover" />
+                    {idx === slideIndex && (
+                      <div className="absolute inset-0 border-2 border-orange-400 rounded-lg pointer-events-none" />
+                    )}
                   </div>
+                  <div className="text-[11px] text-white font-bold truncate leading-tight">{slide.title}</div>
+                  <div className="text-[9px] text-amber-300 font-mono font-bold line-clamp-1">{slide.perk}</div>
                 </button>
               ))}
             </div>
@@ -307,16 +377,16 @@ export default function Register() {
 
         {/* ── RIGHT PANEL: Floating Luxury Glass Register Card ── */}
         <div className="lg:col-span-6 xl:col-span-5 w-full max-w-lg mx-auto">
-          <div className="glass-fade-card rounded-[2.5rem] p-7 sm:p-9 relative overflow-hidden space-y-6">
+          <div className="glass-fade-card rounded-[2.5rem] p-7 sm:p-9 relative overflow-hidden space-y-5">
             
             {/* Top Subtle Sunset Accent Stripe */}
             <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-rose-500 via-orange-500 to-amber-500" />
 
             {/* Form Header */}
-            <div className="space-y-2.5">
+            <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
-                  <PizzaLogoIcon size={42} />
+                  <PizzaLogoIcon size={40} />
                   <div>
                     <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-orange-600 block">
                       Pizzeria Bella • New Membership
@@ -348,184 +418,438 @@ export default function Register() {
               </p>
             </div>
 
+            {/* ═══════════════════════════════════════════════════
+                AUTHENTICATION MODE SWITCHER: MOBILE OTP VS EMAIL
+            ═══════════════════════════════════════════════════ */}
+            {!phoneSuccessUser && !registrationSuccess && (
+              <div className="grid grid-cols-2 p-1 bg-stone-100/90 rounded-2xl border border-stone-200/80">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuthMode('phone');
+                    setError('');
+                  }}
+                  className={`py-2 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                    authMode === 'phone'
+                      ? 'bg-white text-stone-950 shadow-sm border border-stone-200'
+                      : 'text-stone-500 hover:text-stone-900'
+                  }`}
+                >
+                  <Smartphone className={`w-3.5 h-3.5 ${authMode === 'phone' ? 'text-sunset-500' : ''}`} />
+                  <span>Mobile + OTP</span>
+                  <span className="text-[9px] bg-orange-100 text-sunset-700 px-1.5 py-0.2 rounded-full font-bold">Fast</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuthMode('email');
+                    setError('');
+                  }}
+                  className={`py-2 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                    authMode === 'email'
+                      ? 'bg-white text-stone-950 shadow-sm border border-stone-200'
+                      : 'text-stone-500 hover:text-stone-900'
+                  }`}
+                >
+                  <Mail className={`w-3.5 h-3.5 ${authMode === 'email' ? 'text-sunset-500' : ''}`} />
+                  <span>Email & Password</span>
+                </button>
+              </div>
+            )}
+
             {/* Error Alert */}
             {error && (
-              <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-2 font-bold animate-card-fade-in">
+              <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-2 font-bold animate-card-fade-in">
                 <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
                 <span>{error}</span>
               </div>
             )}
 
             {/* ═══════════════════════════════════════════════════
-                REGISTRATION SUCCESS BANNER (With 1-Click Verification)
+                MODE A: MOBILE PHONE + OTP VERIFICATION
             ═══════════════════════════════════════════════════ */}
-            {registrationSuccess ? (
-              <div className="space-y-5 py-3 animate-card-fade-in">
-                <div className="w-14 h-14 bg-emerald-100 text-emerald-600 border border-emerald-200 rounded-2xl flex items-center justify-center mx-auto shadow-sm">
-                  <CheckCircle className="w-8 h-8" />
-                </div>
-
-                <div className="space-y-1.5 text-center">
-                  <h3 className="text-2xl font-serif font-black text-stone-950">Verification Link Sent!</h3>
-                  <p className="text-xs text-stone-600 leading-relaxed max-w-sm mx-auto">
-                    We've dispatched an email verification link to{' '}
-                    <strong className="text-orange-700 font-mono font-bold">{registrationSuccess.email}</strong>.
-                  </p>
-                </div>
-
-                {/* Instant 1-Click Verification Card for Local Evaluation */}
-                <div className="p-4 bg-orange-50/90 rounded-2xl border border-orange-200/80 space-y-3 text-xs">
-                  <div className="text-orange-800 font-mono font-bold uppercase text-[10px] tracking-widest flex items-center gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5 text-orange-500" />
-                    Instant Local Verification Link:
+            {authMode === 'phone' ? (
+              phoneSuccessUser ? (
+                /* Phone Registration Success State */
+                <div className="space-y-4 py-4 text-center animate-card-fade-in">
+                  <div className="w-14 h-14 bg-emerald-100 text-emerald-600 border border-emerald-200 rounded-2xl flex items-center justify-center mx-auto shadow-sm">
+                    <CheckCircle2 className="w-8 h-8" />
                   </div>
-                  <p className="text-[11px] text-stone-600">
-                    Click the button below to verify your account right now without opening email:
-                  </p>
-                  <Link
-                    to={`/verify-email/${registrationSuccess.verificationToken}`}
-                    className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-rose-500 via-orange-500 to-amber-500 hover:from-rose-600 hover:to-orange-500 text-white font-black text-xs flex items-center justify-center gap-1.5 transition-all shadow-sunset-sm hover:shadow-sunset-md active:scale-95"
-                  >
-                    <span>Click to Verify Email Instantly</span>
-                    <ArrowRight className="w-4 h-4 stroke-[3]" />
-                  </Link>
-                  {registrationSuccess.previewUrl && (
-                    <a
-                      href={registrationSuccess.previewUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-orange-600 hover:text-orange-800 text-[11px] flex items-center justify-center gap-1 pt-1 font-bold"
-                    >
-                      <span>Open Ethereal Mailbox Preview</span>
-                      <ExternalLink className="w-3 h-3" />
-                    </a>
-                  )}
+                  <div className="space-y-1">
+                    <h3 className="text-2xl font-serif font-black text-stone-950">Registration Complete!</h3>
+                    <p className="text-xs text-stone-600">
+                      Welcome to Bella Club, <strong className="text-orange-600">{phoneSuccessUser.name}</strong>!
+                    </p>
+                    <p className="text-[11px] text-stone-400">Mobile verified • Redirecting you to the kitchen...</p>
+                  </div>
+                  <div className="pt-2">
+                    <div className="w-6 h-6 border-3 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto" />
+                  </div>
                 </div>
+              ) : !otpSent ? (
+                /* Step 1: Input Name & Mobile Phone Number */
+                <form onSubmit={handleSendPhoneOtp} className="space-y-3.5">
+                  {/* Full Name */}
+                  <div className="space-y-1">
+                    <label className="text-stone-900 block font-mono uppercase tracking-wider text-[11px] font-black">
+                      Full Name
+                    </label>
+                    <div className="relative">
+                      <User className="w-4 h-4 text-orange-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      <input
+                        type="text"
+                        required
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        placeholder="Sahil Kumar"
+                        className="w-full bg-white/55 backdrop-blur-md border border-white/70 rounded-2xl pl-10 pr-4 py-2.5 text-stone-950 font-bold text-sm focus:outline-none focus:bg-white/85 focus:border-orange-500 focus:ring-4 focus:ring-orange-400/20 shadow-xs transition-all placeholder:text-stone-400"
+                      />
+                    </div>
+                  </div>
 
-                <div className="pt-2 text-center">
-                  <Link
-                    to="/login"
-                    className="text-xs text-orange-600 hover:text-orange-800 underline font-black"
+                  {/* Mobile Phone Number */}
+                  <div className="space-y-1">
+                    <label className="text-stone-900 block font-mono uppercase tracking-wider text-[11px] font-black">
+                      Mobile Phone Number
+                    </label>
+                    <div className="relative flex items-center">
+                      <div className="absolute left-3.5 flex items-center gap-1.5 pointer-events-none border-r border-stone-300 pr-2">
+                        <Smartphone className="w-4 h-4 text-orange-500" />
+                        <span className="text-xs font-mono font-black text-stone-700">+91</span>
+                      </div>
+                      <input
+                        type="tel"
+                        required
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value.replace(/[^0-9]/g, '').slice(0, 10))}
+                        placeholder="98765 43210"
+                        className="w-full bg-white/55 backdrop-blur-md border border-white/70 rounded-2xl pl-20 pr-4 py-2.5 text-stone-950 font-bold text-sm focus:outline-none focus:bg-white/85 focus:border-orange-500 focus:ring-4 focus:ring-orange-400/20 shadow-xs transition-all placeholder:text-stone-400 font-mono tracking-wider"
+                      />
+                    </div>
+                    <p className="text-[10px] text-stone-500 pl-1">
+                      We'll dispatch a 6-digit verification code to this number.
+                    </p>
+                  </div>
+
+                  {/* Optional Password */}
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <label className="text-stone-900 block font-mono uppercase tracking-wider text-[11px] font-black">
+                        Password <span className="text-stone-400 font-normal lowercase">(Optional)</span>
+                      </label>
+                      <span className="text-[10px] text-stone-400 font-mono">For password logins</span>
+                    </div>
+                    <div className="relative">
+                      <Lock className="w-4 h-4 text-orange-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      <input
+                        type={showPhonePassword ? 'text' : 'password'}
+                        value={phonePassword}
+                        onChange={(e) => setPhonePassword(e.target.value)}
+                        placeholder="Create password (optional)"
+                        className="w-full bg-white/55 backdrop-blur-md border border-white/70 rounded-2xl pl-10 pr-9 py-2.5 text-stone-950 font-bold text-sm focus:outline-none focus:bg-white/85 focus:border-orange-500 focus:ring-4 focus:ring-orange-400/20 shadow-xs transition-all placeholder:text-stone-400"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPhonePassword((prev) => !prev)}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-700 transition-colors p-1 cursor-pointer"
+                      >
+                        {showPhonePassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Send OTP Button */}
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-sunset-rose via-sunset-500 to-sunset-gold hover:from-rose-600 hover:to-orange-500 text-white font-black text-sm flex items-center justify-center gap-2 shadow-[0_8px_25px_rgba(249,115,22,0.35)] hover:shadow-[0_12px_32px_rgba(249,115,22,0.5)] active:scale-98 transition-all disabled:opacity-60 cursor-pointer pt-3"
                   >
-                    Proceed to Login Page →
-                  </Link>
-                </div>
-              </div>
+                    {loading ? (
+                      <>
+                        <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        <span>Sending Verification Code...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>Send Verification Code (OTP)</span>
+                        <ArrowRight className="w-4 h-4" />
+                      </>
+                    )}
+                  </button>
+                </form>
+              ) : (
+                /* Step 2: Enter & Verify 6-Digit OTP */
+                <form onSubmit={handleVerifyPhoneOtp} className="space-y-4 animate-card-fade-in">
+                  <div className="p-3.5 bg-orange-50/90 rounded-2xl border border-orange-200/80 flex items-center justify-between">
+                    <div>
+                      <div className="text-[10px] font-mono uppercase tracking-wider text-stone-500">
+                        Code dispatched to
+                      </div>
+                      <div className="text-xs font-mono font-black text-orange-900 mt-0.5">
+                        +91 {phone}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setOtpSent(false);
+                        setOtp('');
+                        setError('');
+                      }}
+                      className="px-2.5 py-1 rounded-lg bg-white border border-stone-200 text-[11px] font-bold text-stone-700 hover:text-orange-600 flex items-center gap-1 cursor-pointer transition"
+                    >
+                      <Edit2 className="w-3 h-3" />
+                      <span>Edit</span>
+                    </button>
+                  </div>
+
+                  {/* Instant Demo OTP Preview & 1-Click Auto-Fill */}
+                  {otpPreview && (
+                    <div className="p-3 bg-emerald-50 rounded-2xl border border-emerald-200 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Sparkles className="w-4 h-4 text-emerald-600" />
+                        <div>
+                          <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-700">
+                            Instant OTP Preview:
+                          </div>
+                          <div className="text-sm font-mono font-black text-emerald-900 tracking-widest">
+                            {otpPreview}
+                          </div>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setOtp(otpPreview)}
+                        className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs shadow-xs cursor-pointer transition active:scale-95"
+                      >
+                        Auto-Fill
+                      </button>
+                    </div>
+                  )}
+
+                  {/* 6-Digit OTP Input */}
+                  <div className="space-y-1.5">
+                    <label className="text-stone-900 block font-mono uppercase tracking-wider text-[11px] font-black text-center">
+                      Enter 6-Digit Verification Code
+                    </label>
+                    <div className="relative">
+                      <KeyRound className="w-4 h-4 text-orange-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      <input
+                        type="text"
+                        required
+                        maxLength={6}
+                        autoFocus
+                        value={otp}
+                        onChange={(e) => setOtp(e.target.value.replace(/[^0-9]/g, ''))}
+                        placeholder="••••••"
+                        className="w-full bg-white/80 backdrop-blur-md border border-stone-300 rounded-2xl pl-10 pr-4 py-3 text-stone-950 font-mono font-black text-xl text-center tracking-[0.5em] focus:outline-none focus:bg-white focus:border-orange-500 focus:ring-4 focus:ring-orange-400/20 shadow-xs transition-all placeholder:text-stone-300"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Verify & Register Button */}
+                  <button
+                    type="submit"
+                    disabled={loading || otp.length < 6}
+                    className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-sunset-rose via-sunset-500 to-sunset-gold hover:from-rose-600 hover:to-orange-500 text-white font-black text-sm flex items-center justify-center gap-2 shadow-[0_8px_25px_rgba(249,115,22,0.35)] hover:shadow-[0_12px_32px_rgba(249,115,22,0.5)] active:scale-98 transition-all disabled:opacity-60 cursor-pointer"
+                  >
+                    {loading ? (
+                      <>
+                        <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        <span>Verifying Code...</span>
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle className="w-4 h-4" />
+                        <span>Verify OTP & Complete Registration</span>
+                      </>
+                    )}
+                  </button>
+
+                  {/* Resend OTP */}
+                  <div className="text-center pt-1">
+                    {countdown > 0 ? (
+                      <span className="text-[11px] font-mono text-stone-400">
+                        Resend code in <strong className="text-orange-600">{countdown}s</strong>
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={handleSendPhoneOtp}
+                        className="text-[11px] font-bold text-orange-600 hover:text-orange-800 flex items-center justify-center gap-1 mx-auto cursor-pointer"
+                      >
+                        <RefreshCw className="w-3 h-3" />
+                        <span>Resend OTP Code</span>
+                      </button>
+                    )}
+                  </div>
+                </form>
+              )
             ) : (
               /* ═══════════════════════════════════════════════════
-                  REGISTRATION FORM
+                  MODE B: EMAIL & PASSWORD REGISTRATION
               ═══════════════════════════════════════════════════ */
-              <form onSubmit={handleSubmit} className="space-y-3.5">
-                {/* Full Name */}
-                <div className="space-y-1">
-                  <label className="text-stone-900 block font-mono uppercase tracking-wider text-[11px] font-black">
-                    Full Name
-                  </label>
-                  <div className="relative">
-                    <User className="w-4 h-4 text-orange-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                    <input
-                      type="text"
-                      required
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      placeholder="Mario Rossi"
-                      className="w-full bg-white/55 backdrop-blur-md border border-white/70 rounded-2xl pl-10 pr-4 py-2.5 text-stone-950 font-bold text-sm focus:outline-none focus:bg-white/85 focus:border-orange-500 focus:ring-4 focus:ring-orange-400/20 shadow-xs transition-all placeholder:text-stone-400"
-                    />
+              registrationSuccess ? (
+                <div className="space-y-5 py-3 animate-card-fade-in">
+                  <div className="w-14 h-14 bg-emerald-100 text-emerald-600 border border-emerald-200 rounded-2xl flex items-center justify-center mx-auto shadow-sm">
+                    <CheckCircle className="w-8 h-8" />
+                  </div>
+
+                  <div className="space-y-1.5 text-center">
+                    <h3 className="text-2xl font-serif font-black text-stone-950">Verification Link Sent!</h3>
+                    <p className="text-xs text-stone-600 leading-relaxed max-w-sm mx-auto">
+                      We've dispatched an email verification link to{' '}
+                      <strong className="text-orange-700 font-mono font-bold">{registrationSuccess.email}</strong>.
+                    </p>
+                  </div>
+
+                  {/* Instant 1-Click Verification Link */}
+                  <div className="p-4 bg-orange-50/90 rounded-2xl border border-orange-200/80 space-y-3 text-xs">
+                    <div className="text-orange-800 font-mono font-bold uppercase text-[10px] tracking-widest flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-orange-500" />
+                      Instant Local Verification Link:
+                    </div>
+                    <p className="text-[11px] text-stone-600">
+                      Click the button below to verify your account right now without opening email:
+                    </p>
+                    <Link
+                      to={`/verify-email/${registrationSuccess.verificationToken}`}
+                      className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-rose-500 via-orange-500 to-amber-500 hover:from-rose-600 hover:to-orange-500 text-white font-black text-xs flex items-center justify-center gap-1.5 transition-all shadow-sunset-sm hover:shadow-sunset-md active:scale-95"
+                    >
+                      <span>Click to Verify Email Instantly</span>
+                      <ArrowRight className="w-4 h-4 stroke-[3]" />
+                    </Link>
+                    {registrationSuccess.previewUrl && (
+                      <a
+                        href={registrationSuccess.previewUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-orange-600 hover:text-orange-800 text-[11px] flex items-center justify-center gap-1 pt-1 font-bold"
+                      >
+                        <span>Open Ethereal Mailbox Preview</span>
+                        <ExternalLink className="w-3 h-3" />
+                      </a>
+                    )}
+                  </div>
+
+                  <div className="pt-2 text-center">
+                    <Link
+                      to="/login"
+                      className="text-xs text-orange-600 hover:text-orange-800 underline font-black"
+                    >
+                      Proceed to Login Page →
+                    </Link>
                   </div>
                 </div>
-
-                {/* Email Address */}
-                <div className="space-y-1">
-                  <label className="text-stone-900 block font-mono uppercase tracking-wider text-[11px] font-black">
-                    Email Address
-                  </label>
-                  <div className="relative">
-                    <Mail className="w-4 h-4 text-orange-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                    <input
-                      type="email"
-                      required
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="mario@example.com"
-                      className="w-full bg-white/55 backdrop-blur-md border border-white/70 rounded-2xl pl-10 pr-4 py-2.5 text-stone-950 font-bold text-sm focus:outline-none focus:bg-white/85 focus:border-orange-500 focus:ring-4 focus:ring-orange-400/20 shadow-xs transition-all placeholder:text-stone-400"
-                    />
-                  </div>
-                </div>
-
-                {/* Password Fields in 2-Column Responsive Layout */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {/* Password */}
+              ) : (
+                <form onSubmit={handleEmailSubmit} className="space-y-3.5">
+                  {/* Full Name */}
                   <div className="space-y-1">
                     <label className="text-stone-900 block font-mono uppercase tracking-wider text-[11px] font-black">
-                      Password
+                      Full Name
                     </label>
                     <div className="relative">
-                      <Lock className="w-4 h-4 text-orange-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      <User className="w-4 h-4 text-orange-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                       <input
-                        type={showPassword ? 'text' : 'password'}
+                        type="text"
                         required
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        placeholder="Min 6 chars"
-                        className="w-full bg-white/55 backdrop-blur-md border border-white/70 rounded-2xl pl-10 pr-9 py-2.5 text-stone-950 font-bold text-sm focus:outline-none focus:bg-white/85 focus:border-orange-500 focus:ring-4 focus:ring-orange-400/20 shadow-xs transition-all placeholder:text-stone-400"
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        placeholder="Mario Rossi"
+                        className="w-full bg-white/55 backdrop-blur-md border border-white/70 rounded-2xl pl-10 pr-4 py-2.5 text-stone-950 font-bold text-sm focus:outline-none focus:bg-white/85 focus:border-orange-500 focus:ring-4 focus:ring-orange-400/20 shadow-xs transition-all placeholder:text-stone-400"
                       />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword((prev) => !prev)}
-                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-700 transition-colors p-1 cursor-pointer"
-                        title={showPassword ? 'Hide password' : 'Show password'}
-                      >
-                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                      </button>
                     </div>
                   </div>
 
-                  {/* Confirm Password */}
+                  {/* Email Address */}
                   <div className="space-y-1">
                     <label className="text-stone-900 block font-mono uppercase tracking-wider text-[11px] font-black">
-                      Confirm
+                      Email Address
                     </label>
                     <div className="relative">
-                      <Lock className="w-4 h-4 text-orange-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      <Mail className="w-4 h-4 text-orange-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                       <input
-                        type={showConfirmPassword ? 'text' : 'password'}
+                        type="email"
                         required
-                        value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                        placeholder="Repeat password"
-                        className="w-full bg-white/55 backdrop-blur-md border border-white/70 rounded-2xl pl-10 pr-9 py-2.5 text-stone-950 font-bold text-sm focus:outline-none focus:bg-white/85 focus:border-orange-500 focus:ring-4 focus:ring-orange-400/20 shadow-xs transition-all placeholder:text-stone-400"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder="mario@example.com"
+                        className="w-full bg-white/55 backdrop-blur-md border border-white/70 rounded-2xl pl-10 pr-4 py-2.5 text-stone-950 font-bold text-sm focus:outline-none focus:bg-white/85 focus:border-orange-500 focus:ring-4 focus:ring-orange-400/20 shadow-xs transition-all placeholder:text-stone-400"
                       />
-                      <button
-                        type="button"
-                        onClick={() => setShowConfirmPassword((prev) => !prev)}
-                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-700 transition-colors p-1 cursor-pointer"
-                        title={showConfirmPassword ? 'Hide password' : 'Show password'}
-                      >
-                        {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                      </button>
                     </div>
                   </div>
-                </div>
 
-                {/* Submit Action */}
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-rose-500 via-orange-500 to-amber-500 hover:from-rose-600 hover:to-orange-500 text-white font-black text-sm flex items-center justify-center gap-2 shadow-[0_8px_25px_rgba(249,115,22,0.35)] hover:shadow-[0_12px_32px_rgba(249,115,22,0.5)] active:scale-98 transition-all disabled:opacity-60 cursor-pointer pt-3"
-                >
-                  {loading ? (
-                    <>
-                      <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      <span>Creating Account...</span>
-                    </>
-                  ) : (
-                    <>
-                      <span>Create Account & Join Club</span>
-                      <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                    </>
-                  )}
-                </button>
-              </form>
+                  {/* Password Fields */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-stone-900 block font-mono uppercase tracking-wider text-[11px] font-black">
+                        Password
+                      </label>
+                      <div className="relative">
+                        <Lock className="w-4 h-4 text-orange-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                        <input
+                          type={showPassword ? 'text' : 'password'}
+                          required
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          placeholder="Min 6 chars"
+                          className="w-full bg-white/55 backdrop-blur-md border border-white/70 rounded-2xl pl-10 pr-9 py-2.5 text-stone-950 font-bold text-sm focus:outline-none focus:bg-white/85 focus:border-orange-500 focus:ring-4 focus:ring-orange-400/20 shadow-xs transition-all placeholder:text-stone-400"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword((prev) => !prev)}
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-700 transition-colors p-1 cursor-pointer"
+                        >
+                          {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-stone-900 block font-mono uppercase tracking-wider text-[11px] font-black">
+                        Confirm
+                      </label>
+                      <div className="relative">
+                        <Lock className="w-4 h-4 text-orange-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                        <input
+                          type={showConfirmPassword ? 'text' : 'password'}
+                          required
+                          value={confirmPassword}
+                          onChange={(e) => setConfirmPassword(e.target.value)}
+                          placeholder="Repeat password"
+                          className="w-full bg-white/55 backdrop-blur-md border border-white/70 rounded-2xl pl-10 pr-9 py-2.5 text-stone-950 font-bold text-sm focus:outline-none focus:bg-white/85 focus:border-orange-500 focus:ring-4 focus:ring-orange-400/20 shadow-xs transition-all placeholder:text-stone-400"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowConfirmPassword((prev) => !prev)}
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-700 transition-colors p-1 cursor-pointer"
+                        >
+                          {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-rose-500 via-orange-500 to-amber-500 hover:from-rose-600 hover:to-orange-500 text-white font-black text-sm flex items-center justify-center gap-2 shadow-[0_8px_25px_rgba(249,115,22,0.35)] hover:shadow-[0_12px_32px_rgba(249,115,22,0.5)] active:scale-98 transition-all disabled:opacity-60 cursor-pointer pt-3"
+                  >
+                    {loading ? (
+                      <>
+                        <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        <span>Creating Account...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>Create Account & Join Club</span>
+                        <ArrowRight className="w-4 h-4" />
+                      </>
+                    )}
+                  </button>
+                </form>
+              )
             )}
 
             {/* Footer Routing & Security Trust */}

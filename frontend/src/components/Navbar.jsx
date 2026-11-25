@@ -18,7 +18,7 @@ import {
 
 export default function Navbar() {
   const { user, isAuthenticated, isAdmin, logout } = useAuth();
-  const { itemCount } = useCart();
+  const { itemCount, total } = useCart();
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -125,17 +125,25 @@ export default function Navbar() {
           {/* Desktop Right: Cart + Auth */}
           <div className="hidden lg:flex items-center gap-3">
             <Link
-              to="/checkout"
-              className={`relative p-2.5 rounded-full backdrop-blur-md border transition-all flex items-center gap-2 ${
+              to="/cart"
+              className={`relative px-4 py-2 rounded-full backdrop-blur-md border transition-all flex items-center gap-2 font-bold text-xs ${
                 isOverDarkHero
-                  ? 'bg-white/15 border-white/25 text-white hover:bg-white/25 hover:border-white/40'
-                  : 'bg-orange-500/10 border-orange-300/40 text-orange-800 hover:bg-orange-500/20 hover:border-orange-400 hover:text-sunset-600'
+                  ? 'bg-white/15 border-white/25 text-white hover:bg-white/25 hover:border-white/40 shadow-xs'
+                  : 'bg-orange-500/10 border-orange-300/40 text-orange-900 hover:bg-orange-500/20 hover:border-orange-400 hover:text-sunset-600 shadow-xs'
               }`}
             >
-              <ShoppingBag className="w-5 h-5" />
+              <div className="relative">
+                <ShoppingBag className="w-4 h-4 text-sunset-500" />
+                {itemCount > 0 && (
+                  <span className="absolute -top-2 -right-2 bg-gradient-to-r from-sunset-rose to-sunset-500 text-white text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center shadow-xs">
+                    {itemCount}
+                  </span>
+                )}
+              </div>
+              <span className="tracking-wide">View Cart</span>
               {itemCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-sunset-500 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center shadow-sunset-sm">
-                  {itemCount}
+                <span className="ml-0.5 text-[11px] font-mono font-black text-sunset-700 bg-white/80 px-2 py-0.5 rounded-full shadow-2xs">
+                  ₹{total}
                 </span>
               )}
             </Link>
@@ -187,16 +195,17 @@ export default function Navbar() {
           {/* Mobile Menu Icon */}
           <div className="flex items-center gap-2.5 sm:hidden">
             <Link
-              to="/checkout"
+              to="/cart"
               className={`relative p-2 rounded-full backdrop-blur-md border ${
                 isOverDarkHero
                   ? 'bg-white/15 border-white/25 text-white'
                   : 'bg-orange-500/10 border-orange-300/40 text-orange-800'
               }`}
+              title="View Cart"
             >
               <ShoppingBag className="w-5 h-5" />
               {itemCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-sunset-500 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
+                <span className="absolute -top-1 -right-1 bg-sunset-500 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center shadow-xs">
                   {itemCount}
                 </span>
               )}
@@ -218,6 +227,19 @@ export default function Navbar() {
       {/* Mobile Drawer */}
       {mobileMenuOpen && (
         <div className="sm:hidden mt-2 max-w-7xl mx-auto glass-nav rounded-3xl p-5 shadow-2xl space-y-3 animate-slide-up border border-white/70">
+          <Link
+            to="/cart"
+            onClick={() => setMobileMenuOpen(false)}
+            className="flex items-center justify-between px-4 py-3 rounded-2xl text-xs font-black bg-gradient-to-r from-sunset-rose via-sunset-500 to-sunset-gold text-white shadow-sunset-sm"
+          >
+            <div className="flex items-center gap-2.5">
+              <ShoppingBag className="w-4 h-4" />
+              <span className="tracking-wide uppercase text-[11px]">View Cart</span>
+            </div>
+            <span className="bg-white/20 backdrop-blur-sm px-2.5 py-0.5 rounded-full text-[11px] font-mono font-bold">
+              {itemCount} {itemCount === 1 ? 'item' : 'items'} • ₹{total}
+            </span>
+          </Link>
           <Link
             to="/"
             onClick={() => setMobileMenuOpen(false)}

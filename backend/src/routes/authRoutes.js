@@ -12,6 +12,11 @@ router.post('/login', authController.login);
 router.post('/forgot-password', authController.forgotPassword);
 router.post('/reset-password/:token', authController.resetPassword);
 
+// Mobile Phone + OTP Auth
+router.post('/register-phone', authController.registerWithPhone);
+router.post('/verify-phone-otp', authController.verifyPhoneOtp);
+router.post('/send-phone-otp', authController.sendPhoneLoginOtp);
+
 // Dedicated Admin Login (Not part of user registration flow)
 router.post('/admin/login', authController.adminLogin);
 
