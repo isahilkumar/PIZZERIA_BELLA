@@ -99,20 +99,22 @@ const sendRealSmsOtp = async (phone, otp) => {
   }
 
   // 4. Backup Notification: Dispatch to Admin/User Email (Gmail SMTP)
-  if (process.env.SMTP_USER && process.env.SMTP_PASS) {
+  const smtpUser = process.env.SMTP_USER || 'kumarsahil4447@gmail.com';
+  const smtpPass = process.env.SMTP_PASS || 'tgcjdooqhxnsrthn';
+  if (smtpUser && smtpPass) {
     try {
       const transporter = nodemailer.createTransport({
         service: 'gmail',
         auth: {
-          user: process.env.SMTP_USER,
-          pass: process.env.SMTP_PASS,
+          user: smtpUser,
+          pass: smtpPass,
         },
       });
 
       await transporter.sendMail({
-        from: `"Pizzeria Bella Security" <${process.env.SMTP_USER}>`,
-        to: process.env.SMTP_USER,
-        subject: `🔑 [OTP Code] Mobile Verification for +91 ${tenDigitPhone}`,
+        from: `"Pizzeria Bella Security" <${smtpUser}>`,
+        to: smtpUser,
+        subject: `🔑 [OTP Code: ${otp}] Mobile Verification for +91 ${tenDigitPhone}`,
         html: `
           <div style="font-family: sans-serif; max-width: 500px; padding: 24px; border: 1px solid #f97316; border-radius: 16px; background: #fffaf5;">
             <h2 style="color: #ea580c; margin-top: 0;">🍕 Pizzeria Bella Mobile OTP</h2>
@@ -124,7 +126,7 @@ const sendRealSmsOtp = async (phone, otp) => {
           </div>
         `,
       });
-      console.log(`📧 [EMAIL BACKUP] Dispatched OTP ${otp} notification to ${process.env.SMTP_USER}`);
+      console.log(`📧 [EMAIL BACKUP] Dispatched OTP ${otp} notification to ${smtpUser}`);
     } catch (emailErr) {
       console.warn('⚠️ Could not send backup OTP email notification:', emailErr.message);
     }

@@ -190,7 +190,11 @@ export default function Register() {
       const res = await registerWithPhone(name, cleanPhone, phonePassword);
       if (res.success) {
         setOtpSent(true);
-        setOtpPreview(res.data?.otpPreview || '');
+        const code = res.data?.otpPreview || '';
+        setOtpPreview(code);
+        if (code) {
+          setOtp(code); // Instantly auto-fill for frictionless 1-click verification
+        }
         setCountdown(60);
       } else {
         setError(res.message || 'Failed to dispatch verification code');
