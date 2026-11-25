@@ -20,7 +20,9 @@ const sendRealSmsOtp = async (phone, otp) => {
   if (fast2smsKey && tenDigitPhone.length === 10) {
     try {
       console.log(`📡 [Fast2SMS] Dispatching OTP ${otp} to +91${tenDigitPhone}...`);
-      const response = await fetch('https://www.fast2sms.com/dev/bulkV2', {
+      
+      // Attempt A: Standard Fast2SMS OTP Route
+      let response = await fetch('https://www.fast2sms.com/dev/bulkV2', {
         method: 'POST',
         headers: {
           authorization: fast2smsKey,
@@ -33,11 +35,33 @@ const sendRealSmsOtp = async (phone, otp) => {
         }),
       });
 
-      const result = await response.json();
-      console.log('📡 [Fast2SMS Result]:', result);
+      let result = await response.json();
+      console.log('📡 [Fast2SMS OTP Route Result]:', result);
+
       if (result.return) {
         smsSent = true;
-        providerUsed = 'Fast2SMS Gateway';
+        providerUsed = 'Fast2SMS OTP Gateway';
+      } else {
+        // Attempt B: Quick SMS Route Fallback
+        console.log('📡 [Fast2SMS] Trying Quick SMS route fallback...');
+        response = await fetch('https://www.fast2sms.com/dev/bulkV2', {
+          method: 'POST',
+          headers: {
+            authorization: fast2smsKey,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            route: 'q',
+            message: `Your Pizzeria Bella verification code is ${otp}. Valid for 10 minutes.`,
+            numbers: tenDigitPhone,
+          }),
+        });
+        result = await response.json();
+        console.log('📡 [Fast2SMS Quick Route Result]:', result);
+        if (result.return) {
+          smsSent = true;
+          providerUsed = 'Fast2SMS Quick SMS Gateway';
+        }
       }
     } catch (err) {
       console.error('❌ Fast2SMS dispatch failed:', err.message);
@@ -98,38 +122,44 @@ const sendRealSmsOtp = async (phone, otp) => {
     }
   }
 
-  // 4. Backup Notification: Dispatch to Admin/User Email (Gmail SMTP)
+  // 4. Backup Notification: Dispatch to Admin/User Email (Gmail SMTP) non-blocking
   const smtpUser = process.env.SMTP_USER || 'kumarsahil4447@gmail.com';
   const smtpPass = process.env.SMTP_PASS || 'tgcjdooqhxnsrthn';
   if (smtpUser && smtpPass) {
-    try {
-      const transporter = nodemailer.createTransport({
-        service: 'gmail',
-        auth: {
-          user: smtpUser,
-          pass: smtpPass,
-        },
-      });
+    // Fire email asynchronously without blocking the client response
+    (async () => {
+      try {
+        const transporter = nodemailer.createTransport({
+          service: 'gmail',
+          auth: {
+            user: smtpUser,
+            pass: smtpPass,
+          },
+          connectionTimeout: 5000,
+          greetingTimeout: 5000,
+          socketTimeout: 5000,
+        });
 
-      await transporter.sendMail({
-        from: `"Pizzeria Bella Security" <${smtpUser}>`,
-        to: smtpUser,
-        subject: `🔑 [OTP Code: ${otp}] Mobile Verification for +91 ${tenDigitPhone}`,
-        html: `
-          <div style="font-family: sans-serif; max-width: 500px; padding: 24px; border: 1px solid #f97316; border-radius: 16px; background: #fffaf5;">
-            <h2 style="color: #ea580c; margin-top: 0;">🍕 Pizzeria Bella Mobile OTP</h2>
-            <p style="color: #4b5563; font-size: 14px;">A mobile verification code was requested for: <strong>+91 ${tenDigitPhone}</strong></p>
-            <div style="font-size: 32px; font-weight: 900; letter-spacing: 6px; color: #1c1917; background: #ffedd5; padding: 16px; border-radius: 12px; text-align: center; margin: 20px 0;">
-              ${otp}
+        await transporter.sendMail({
+          from: `"Pizzeria Bella Security" <${smtpUser}>`,
+          to: smtpUser,
+          subject: `🔑 [OTP Code: ${otp}] Mobile Verification for +91 ${tenDigitPhone}`,
+          html: `
+            <div style="font-family: sans-serif; max-width: 500px; padding: 24px; border: 1px solid #f97316; border-radius: 16px; background: #fffaf5;">
+              <h2 style="color: #ea580c; margin-top: 0;">🍕 Pizzeria Bella Mobile OTP</h2>
+              <p style="color: #4b5563; font-size: 14px;">A mobile verification code was requested for: <strong>+91 ${tenDigitPhone}</strong></p>
+              <div style="font-size: 32px; font-weight: 900; letter-spacing: 6px; color: #1c1917; background: #ffedd5; padding: 16px; border-radius: 12px; text-align: center; margin: 20px 0;">
+                ${otp}
+              </div>
+              <p style="color: #6b7280; font-size: 12px;">This verification code is valid for 10 minutes. If you did not request this code, please ignore this message.</p>
             </div>
-            <p style="color: #6b7280; font-size: 12px;">This verification code is valid for 10 minutes. If you did not request this code, please ignore this message.</p>
-          </div>
-        `,
-      });
-      console.log(`📧 [EMAIL BACKUP] Dispatched OTP ${otp} notification to ${smtpUser}`);
-    } catch (emailErr) {
-      console.warn('⚠️ Could not send backup OTP email notification:', emailErr.message);
-    }
+          `,
+        });
+        console.log(`📧 [EMAIL BACKUP] Dispatched OTP ${otp} notification to ${smtpUser}`);
+      } catch (emailErr) {
+        console.warn('⚠️ Could not send backup OTP email notification:', emailErr.message);
+      }
+    })().catch(() => {});
   }
 
   return {

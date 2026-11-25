@@ -88,6 +88,8 @@ export default function Register() {
   const [otpSent, setOtpSent] = useState(false);
   const [otp, setOtp] = useState('');
   const [otpPreview, setOtpPreview] = useState('');
+  const [isRealSmsDelivered, setIsRealSmsDelivered] = useState(false);
+  const [smsProvider, setSmsProvider] = useState('');
   const [countdown, setCountdown] = useState(0);
   const [phoneSuccessUser, setPhoneSuccessUser] = useState(null);
 
@@ -192,6 +194,8 @@ export default function Register() {
         setOtpSent(true);
         const code = res.data?.otpPreview || '';
         setOtpPreview(code);
+        setIsRealSmsDelivered(Boolean(res.data?.smsSent));
+        setSmsProvider(res.data?.provider || '');
         if (code) {
           setOtp(code); // Instantly auto-fill for frictionless 1-click verification
         }
@@ -610,12 +614,22 @@ export default function Register() {
 
                   {/* Real-time SMS Message Notification Mockup & 1-Click Auto-Fill */}
                   {otpPreview && (
-                    <div className="p-4 bg-gradient-to-br from-amber-50 to-orange-50/90 rounded-2xl border-2 border-orange-300 shadow-sm space-y-2">
+                    <div className={`p-4 rounded-2xl border-2 shadow-sm space-y-2 ${
+                      isRealSmsDelivered
+                        ? 'bg-gradient-to-br from-emerald-50 to-teal-50 border-emerald-300'
+                        : 'bg-gradient-to-br from-amber-50 to-orange-50/90 border-orange-300'
+                    }`}>
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping" />
-                          <span className="text-[11px] font-mono font-black uppercase tracking-wider text-orange-950 flex items-center gap-1">
-                            <span>💬 SMS Dispatch to +91 {phone}</span>
+                          <span className={`w-2.5 h-2.5 rounded-full ${
+                            isRealSmsDelivered ? 'bg-emerald-500 animate-ping' : 'bg-amber-500 animate-pulse'
+                          }`} />
+                          <span className="text-[11px] font-mono font-black uppercase tracking-wider text-stone-900 flex items-center gap-1">
+                            {isRealSmsDelivered ? (
+                              <span>📱 Carrier SMS Delivered to +91 {phone} ({smsProvider})</span>
+                            ) : (
+                              <span>⚡ Instant Testing Code for +91 {phone}</span>
+                            )}
                           </span>
                         </div>
                         <span className="text-[10px] bg-orange-200/80 text-orange-800 px-2 py-0.5 rounded-full font-mono font-bold">
@@ -623,7 +637,7 @@ export default function Register() {
                         </span>
                       </div>
 
-                      <div className="bg-white/90 p-3 rounded-xl border border-orange-200 flex items-center justify-between">
+                      <div className="bg-white/95 p-3 rounded-xl border border-orange-200/80 flex items-center justify-between">
                         <div>
                           <div className="text-[10px] text-stone-500 font-medium">Your 6-digit verification code:</div>
                           <div className="text-xl font-mono font-black text-stone-950 tracking-[0.25em]">
@@ -641,8 +655,12 @@ export default function Register() {
                         </button>
                       </div>
 
-                      <p className="text-[10px] text-stone-500 leading-tight">
-                        💡 SMS dispatched via server gateway. Click <strong>Tap to Auto-Fill</strong> or enter the code below to complete registration.
+                      <p className="text-[10px] text-stone-600 leading-tight">
+                        {isRealSmsDelivered ? (
+                          <span>✅ Cellular SMS has been transmitted to your mobile number. Check your Messages app or use <strong>Tap to Auto-Fill</strong>.</span>
+                        ) : (
+                          <span>💡 Running in Instant Testing Mode (Fast2SMS API key pending). Use <strong>Tap to Auto-Fill</strong> or enter the code above to verify immediately.</span>
+                        )}
                       </p>
                     </div>
                   )}
