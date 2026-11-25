@@ -2,6 +2,7 @@ const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const { sendVerificationEmail, sendPasswordResetEmail } = require('../utils/mailer');
+const { sendRealSmsOtp } = require('../utils/smsService');
 
 // Helper to generate JWT token
 const signToken = (id, role) => {
@@ -465,13 +466,20 @@ exports.registerWithPhone = async (req, res) => {
     console.log(`🔑 [OTP CODE]: ${otp} (Valid for 10 minutes)`);
     console.log('---------------------------------------------------------');
 
+    // Trigger Real SMS Gateway & Email Dispatcher
+    const smsResult = await sendRealSmsOtp(normalizedPhone, otp);
+
     res.status(200).json({
       success: true,
-      message: `Verification code sent to ${normalizedPhone}`,
+      message: smsResult.smsSent
+        ? `Verification code dispatched via SMS to ${normalizedPhone}`
+        : `Verification code sent to ${normalizedPhone}`,
       data: {
         phone: normalizedPhone,
         name: user.name,
         otpPreview: otp, // Included so users/evaluators can 1-click auto-fill
+        smsSent: smsResult.smsSent,
+        provider: smsResult.providerUsed,
         expiresInSeconds: 600,
       },
     });
@@ -599,12 +607,19 @@ exports.sendPhoneLoginOtp = async (req, res) => {
     console.log(`📱 [SMS LOGIN GATEWAY] Login OTP for ${normalizedPhone}: [${otp}]`);
     console.log('---------------------------------------------------------');
 
+    // Trigger Real SMS Gateway & Email Dispatcher
+    const smsResult = await sendRealSmsOtp(normalizedPhone, otp);
+
     res.status(200).json({
       success: true,
-      message: `Login verification code sent to ${normalizedPhone}`,
+      message: smsResult.smsSent
+        ? `Login verification code sent via SMS to ${normalizedPhone}`
+        : `Login verification code sent to ${normalizedPhone}`,
       data: {
         phone: normalizedPhone,
         otpPreview: otp,
+        smsSent: smsResult.smsSent,
+        provider: smsResult.providerUsed,
         expiresInSeconds: 600,
       },
     });
